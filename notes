@@ -1,0 +1,5 @@
+free -h, uptime, vmstat -S M
+
+curl -X POST -H "Content-Type: text/plain" --data-binary "@filein" http://192.168.1.128/cgi-bin/rpihbsrv.cgi
+
+
