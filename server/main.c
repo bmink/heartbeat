@@ -2,11 +2,15 @@
 #include <stdlib.h>
 #include <libgen.h>
 #include <errno.h>
+#include <time.h>
 #include "bstr.h"
 #include "blog.h"
+#include "hiredis_helper.h"
 
 int do_list(void);
 int do_update(void);
+
+#define REDIS_KEY	"rpihb:entries"
 
 int
 main(int argc, char **argv)
@@ -30,6 +34,13 @@ main(int argc, char **argv)
 	ret = blog_init(execn);
 	if(ret != 0) {
                 printf("Could not initialize logging\n");
+		err = -1;
+                goto end_label;
+	}
+
+	ret = hiredis_init();
+	if(ret != 0) {
+                printf("Could not connect to redis\n");
 		err = -1;
                 goto end_label;
 	}
@@ -64,6 +75,8 @@ end_label:
 		printf("Error (check logs)\n");
 	}
 
+	hiredis_uninit();
+
 	(void) blog_uninit();
 
 	return err;
@@ -79,24 +92,16 @@ do_update(void)
 	int	contlen;
 	char	buf[MAX_INPUT];
 	int	nread;
-	bstr_t	*inp;
-	bstr_t	*ipaddr;
+	bstr_t	*entry;
 	int	err;
-
-	inp = NULL;
-	ipaddr = NULL;
-
-	inp = binit();
-	if(inp == NULL) {
-		blogf("Could not allocate inp");
-		return ENOMEM;
-	}
+	int	ret;
 
 	err = 0;
+	entry = NULL;
 
-	ipaddr = binit();
-	if(ipaddr == NULL) {
-		blogf("Could not allocate ipaddr");
+	entry = binit();
+	if(entry == NULL) {
+		blogf("Could not allocate entry");
 		return ENOMEM;
 	}
 
@@ -107,7 +112,8 @@ do_update(void)
 		goto end_label;
 	}
 
-	bstrcat(ipaddr, val);
+	bstrcat(entry, val);
+	bprintf(entry, ": ");
 
 	val = getenv("CONTENT_LENGTH");
 	if(xstrempty(val)) {
@@ -131,14 +137,21 @@ do_update(void)
 		goto end_label;
 	}
 
-	bmemcat(inp, buf, nread);
+	bmemcat(entry, buf, nread);
+	bprintf(entry, "\n");
 
-	printf("%s\n%s", bget(ipaddr), bget(inp));
+	ret = hiredis_zadd(REDIS_KEY, time(NULL), entry, NULL);
+	if(ret != 0) {
+		blogf("Could not add entry to redis");
+		err = ret;
+		goto end_label;
+	}
+
+	printf("Update successful.\n");
 
 end_label:
 
-	buninit(&inp);	
-	buninit(&ipaddr);	
+	buninit(&entry);	
 
 	return err;
 }
