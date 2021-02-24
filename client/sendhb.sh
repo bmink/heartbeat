@@ -1,6 +1,6 @@
 #!/bin/sh
 
-IDFILE=.idstr
+IDFILE=/home/bmink/.idstr
 URL=http://192.168.1.128/cgi-bin/rpihbsrv.cgi
 
 if [ ! -f "$IDFILE" ]; then
