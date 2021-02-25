@@ -1,5 +1,5 @@
 P = rpihbsrv
-OBJS = main.o hiredis_helper.o
+OBJS = main.o entry.o hiredis_helper.o
 CFLAGS = -g -Wall -Wstrict-prototypes
 LDLIBS = -lb -lcurl -lhiredis
 

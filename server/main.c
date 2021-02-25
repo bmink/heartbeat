@@ -96,7 +96,6 @@ do_update(void)
 	int	nread;
 	entry_t	*entry;
 	int	err;
-	int	ret;
 
 	err = 0;
 	entry = NULL;
@@ -140,6 +139,15 @@ do_update(void)
 	}
 
 	printf("%s\n", buf);
+
+	entry = entry_init_frompostdata(ipaddr, buf);
+	if(entry == NULL) {
+		blogf("Couldn't initialize entry from post data");
+		err = ENOEXEC;
+		goto end_label;
+	}
+
+	
 
 
 	printf("Update successful.\n");
