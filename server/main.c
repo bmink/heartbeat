@@ -6,6 +6,7 @@
 #include "bstr.h"
 #include "blog.h"
 #include "hiredis_helper.h"
+#include "entry.h"
 
 int do_list(void);
 int do_update(void);
@@ -88,46 +89,47 @@ end_label:
 int
 do_update(void)
 {
-	char	*val;
+	char	*ipaddr;
+	char	*contlenstr;
 	int	contlen;
 	char	buf[MAX_INPUT];
 	int	nread;
-	bstr_t	*entry;
+	entry_t	*entry;
 	int	err;
 	int	ret;
 
 	err = 0;
 	entry = NULL;
 
-	entry = binit();
-	if(entry == NULL) {
-		blogf("Could not allocate entry");
-		return ENOMEM;
-	}
-
-	val = getenv("REMOTE_ADDR");
-	if(xstrempty(val)) {
+	ipaddr = getenv("REMOTE_ADDR");
+	if(xstrempty(ipaddr)) {
 		blogf("Could not get REMOTE_ADDR");
 		err = ENOENT;
 		goto end_label;
 	}
 
-	bstrcat(entry, val);
-	bprintf(entry, ": ");
-
-	val = getenv("CONTENT_LENGTH");
-	if(xstrempty(val)) {
+	contlenstr = getenv("CONTENT_LENGTH");
+	if(xstrempty(contlenstr)) {
 		blogf("Could not get CONTENT_LENGTH");
 		err = ENOENT;
 		goto end_label;
 	}
 
-	contlen = atoi(val);
+	contlen = atoi(contlenstr);
 	if(contlen <= 0) {
 		blogf("Invalid CONTENT_LENGTH");
 		err = EINVAL;
 		goto end_label;
 	}
+
+	if(contlen >= MAX_INPUT) {	/* >= so we leave space for zero
+					 * termination */
+		blogf("Post data too large.");
+		err = EINVAL;
+		goto end_label;
+	}
+
+	memset(buf, 0, MAX_INPUT);
 
 	/* Read content-length bytes from stdin */
 	nread = fread(buf, 1, contlen, stdin);
@@ -137,21 +139,14 @@ do_update(void)
 		goto end_label;
 	}
 
-	bmemcat(entry, buf, nread);
-	bprintf(entry, "\n");
+	printf("%s\n", buf);
 
-	ret = hiredis_zadd(REDIS_KEY, time(NULL), entry, NULL);
-	if(ret != 0) {
-		blogf("Could not add entry to redis");
-		err = ret;
-		goto end_label;
-	}
 
 	printf("Update successful.\n");
 
 end_label:
 
-	buninit(&entry);	
+	entry_uninit(&entry);	
 
 	return err;
 }
