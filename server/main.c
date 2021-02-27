@@ -11,7 +11,6 @@
 int do_list(void);
 int do_update(void);
 
-#define REDIS_KEY	"rpihb:entries"
 
 int
 main(int argc, char **argv)
@@ -72,7 +71,9 @@ main(int argc, char **argv)
 
 end_label:
 
-	if(err != 0) {
+	if(err == 0) {
+		printf("Update successful.\n");
+	} else {
 		printf("Error (check logs)\n");
 	}
 
@@ -96,6 +97,7 @@ do_update(void)
 	int	nread;
 	entry_t	*entry;
 	int	err;
+	int	ret;
 
 	err = 0;
 	entry = NULL;
@@ -138,8 +140,6 @@ do_update(void)
 		goto end_label;
 	}
 
-	printf("%s\n", buf);
-
 	entry = entry_init_frompostdata(ipaddr, buf);
 	if(entry == NULL) {
 		blogf("Couldn't initialize entry from post data");
@@ -147,10 +147,12 @@ do_update(void)
 		goto end_label;
 	}
 
-	
-
-
-	printf("Update successful.\n");
+	ret = entry_savetoredis(entry);
+	if(ret != 0) {
+		blogf("Could not save entry");
+		err = ret;
+		goto end_label;
+	}
 
 end_label:
 

@@ -5,7 +5,7 @@
 #include "bstr.h"
 
 typedef struct entry {
-	bstr_t	*en_name;
+	bstr_t	*en_hostn;
 	bstr_t	*en_ipaddr;
 	time_t	en_lasthb;
 

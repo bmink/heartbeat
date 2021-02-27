@@ -2,9 +2,14 @@
 #include <errno.h>
 #include "bstr.h"
 #include "blog.h"
+#include "cJSON.h"
+#include "cJSON_helper.h"
+#include "hiredis_helper.h"
 
 static int getval(const char *, const char *, bstr_t *);
 static entry_t *_entry_init(void);
+
+#define REDIS_KEYPREF	"rpihb:entries:"
 
 entry_t *
 entry_init_frompostdata(const char *ipaddr, const char *postdata)
@@ -27,7 +32,7 @@ entry_init_frompostdata(const char *ipaddr, const char *postdata)
 		goto end_label;
 	}
 
-	ret = getval("hostn", postdata, entry->en_name);
+	ret = getval("hostn", postdata, entry->en_hostn);
 	if(ret != 0) {
 		blogf("Could not get hostn");
 		err = ret;
@@ -72,7 +77,6 @@ entry_init_frompostdata(const char *ipaddr, const char *postdata)
 		goto end_label;
 	}
 
-
 end_label:
 
 	if(err != 0)
@@ -92,9 +96,120 @@ entry_init_fromredis(const char *hostn)
 int
 entry_savetoredis(entry_t *entry)
 {
-	return 0;
-}
+	cJSON	*entryj;
+	cJSON	*child;
+	int	err;
+	char	*rendered;
+	bstr_t	*key;
+	int	ret;
 
+	if(entry == NULL)
+		return EINVAL;
+
+	err = 0;
+	entryj = NULL;
+	rendered = NULL;
+	key = NULL;
+
+	entryj = cJSON_CreateObject();
+	if(entryj == NULL) {
+		blogf("Couldn't create JSON object");
+		err = ENOMEM;
+		goto end_label;
+	}
+
+	child = cJSON_AddStringToObject(entryj, "hostn", bget(entry->en_hostn));
+	if(child == NULL) {
+		err = ENOEXEC;
+		goto end_label;
+	}
+
+	child = cJSON_AddStringToObject(entryj, "ipaddr",
+	    bget(entry->en_ipaddr));
+	if(child == NULL) {
+		err = ENOEXEC;
+		goto end_label;
+	}
+
+	child = cJSON_AddNumberToObject(entryj, "lasthb", entry->en_lasthb);
+	if(child == NULL) {
+		err = ENOEXEC;
+		goto end_label;
+	}
+
+	child = cJSON_AddStringToObject(entryj, "free_outp",
+	    bget(entry->en_free_outp));
+	if(child == NULL) {
+		err = ENOEXEC;
+		goto end_label;
+	}
+
+	child = cJSON_AddStringToObject(entryj, "vmstat_outp",
+	    bget(entry->en_vmstat_outp));
+	if(child == NULL) {
+		err = ENOEXEC;
+		goto end_label;
+	}
+
+	child = cJSON_AddStringToObject(entryj, "uptime_outp",
+	    bget(entry->en_uptime_outp));
+	if(child == NULL) {
+		err = ENOEXEC;
+		goto end_label;
+	}
+
+	child = cJSON_AddStringToObject(entryj, "df_outp",
+	    bget(entry->en_df_outp));
+	if(child == NULL) {
+		err = ENOEXEC;
+		goto end_label;
+	}
+
+	child = cJSON_AddStringToObject(entryj, "logs_outp",
+	    bget(entry->en_logs_outp));
+	if(child == NULL) {
+		err = ENOEXEC;
+		goto end_label;
+	}
+
+	rendered = cJSON_Print(entryj);
+	if(xstrempty(rendered)) {
+		blogf("Could not render into string");
+		err = ENOEXEC;
+		goto end_label;
+	}
+
+#if 0
+	printf("%s\n", rendered);
+#endif
+
+	key = binit();
+	if(key == NULL) {
+		blogf("Could not allocate key");
+		err = ENOMEM;
+		goto end_label;
+	}
+
+	bprintf(key, "%s%s", REDIS_KEYPREF, bget(entry->en_hostn));
+
+	ret = hiredis_set(bget(key), rendered);
+	if(ret != 0) {
+		blogf("Could not store entry in redis");
+		err = ret;
+		goto end_label;
+	}
+	
+	
+end_label:
+
+	if(entryj)
+		cJSON_Delete(entryj);
+	if(rendered)
+		free(rendered);
+	buninit(&key);
+
+	return err;
+}
 
 
 
@@ -115,15 +230,15 @@ _entry_init(void)
 
 	memset(entry, 0, sizeof(entry_t));
 
-	entry->en_name = binit();
-	if(entry->en_name == NULL) {
-		blogf("Could not allocate en_name");
+	entry->en_hostn = binit();
+	if(entry->en_hostn == NULL) {
+		blogf("Could not allocate en_hostn");
 		err = ENOMEM;
 		goto end_label;
 	}
 
 	entry->en_ipaddr = binit();
-	if(entry->en_name == NULL) {
+	if(entry->en_ipaddr == NULL) {
 		blogf("Could not allocate en_ipaddr");
 		err = ENOMEM;
 		goto end_label;
@@ -179,7 +294,7 @@ entry_uninit(entry_t **entryp)
 	if(entryp == NULL || *entryp == NULL)
 		return;
 
-	buninit(&((*entryp)->en_name));
+	buninit(&((*entryp)->en_hostn));
 	buninit(&((*entryp)->en_ipaddr));
 	buninit(&((*entryp)->en_free_outp));
 	buninit(&((*entryp)->en_vmstat_outp));
@@ -240,7 +355,9 @@ getval(const char *nam, const char *buf, bstr_t *dst)
 		bputc(encoded, *cur);
 	}
 
+#if 0
 	printf("encoded: %s\n", bget(encoded));
+#endif
 
 	ret = burldecode(bget(encoded), dst);
 	if(ret != 0) {
@@ -249,7 +366,9 @@ getval(const char *nam, const char *buf, bstr_t *dst)
 		goto end_label;
 	}
 	
+#if 0
 	printf("decoded: %s\n", bget(dst));
+#endif
 
 end_label:
 
