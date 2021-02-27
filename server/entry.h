@@ -12,6 +12,8 @@ typedef struct entry {
 	bstr_t	*en_free_outp;
 	bstr_t	*en_vmstat_outp;
 	bstr_t	*en_uptime_outp;
+	bstr_t	*en_df_outp;
+	bstr_t	*en_logs_outp;
 } entry_t;
 
 entry_t *entry_init_frompostdata(const char *, const char *);

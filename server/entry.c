@@ -35,10 +35,39 @@ entry_init_frompostdata(const char *ipaddr, const char *postdata)
 	}
 
 	bstrcat(entry->en_ipaddr, ipaddr);
+	entry->en_lasthb = time(NULL);
 
 	ret = getval("free_output", postdata, entry->en_free_outp);
 	if(ret != 0) {
 		blogf("Could not get free_output");
+		err = ret;
+		goto end_label;
+	}
+
+	ret = getval("vmstat_output", postdata, entry->en_vmstat_outp);
+	if(ret != 0) {
+		blogf("Could not get vmstat_output");
+		err = ret;
+		goto end_label;
+	}
+
+	ret = getval("uptime_output", postdata, entry->en_uptime_outp);
+	if(ret != 0) {
+		blogf("Could not get uptime_output");
+		err = ret;
+		goto end_label;
+	}
+
+	ret = getval("df_output", postdata, entry->en_df_outp);
+	if(ret != 0) {
+		blogf("Could not get df_output");
+		err = ret;
+		goto end_label;
+	}
+
+	ret = getval("logs_output", postdata, entry->en_logs_outp);
+	if(ret != 0) {
+		blogf("Could not get logs_output");
 		err = ret;
 		goto end_label;
 	}
@@ -121,6 +150,20 @@ _entry_init(void)
 		goto end_label;
 	}
 
+	entry->en_df_outp = binit();
+	if(entry->en_df_outp == NULL) {
+		blogf("Could not allocate en_df_outp");
+		err = ENOMEM;
+		goto end_label;
+	}
+
+	entry->en_logs_outp = binit();
+	if(entry->en_logs_outp == NULL) {
+		blogf("Could not allocate en_logs_outp");
+		err = ENOMEM;
+		goto end_label;
+	}
+
 
 end_label:
 	if(err != 0)
@@ -141,6 +184,8 @@ entry_uninit(entry_t **entryp)
 	buninit(&((*entryp)->en_free_outp));
 	buninit(&((*entryp)->en_vmstat_outp));
 	buninit(&((*entryp)->en_uptime_outp));
+	buninit(&((*entryp)->en_df_outp));
+	buninit(&((*entryp)->en_logs_outp));
 
 	free(*entryp);
 

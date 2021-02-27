@@ -84,7 +84,7 @@ end_label:
 }
 
 
-#define MAX_INPUT	4096
+#define MAX_INPUT	10240
 
 int
 do_update(void)
