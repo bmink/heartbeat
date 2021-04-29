@@ -383,6 +383,77 @@ end_label:
 blist_t *
 entry_getall_fromredis(void)
 {
-	return NULL;
+	barr_t	*keys;
+	bstr_t	*key;
+	blist_t	*entries;
+	entry_t	*entry;
+	int	err;
+	int	ret;
+	bstr_t	*keypatt;
+
+	keys = NULL;
+	entries = NULL;
+	keypatt = NULL;
+	err = 0;
+
+	keys = barr_init(sizeof(bstr_t));
+	if(keys == NULL) {
+		blogf("Couldn't allocate keys");
+		err = ENOMEM;
+		goto end_label;
+	}
+
+	entries = blist_init();
+	if(entries == NULL) {
+		blogf("Couldn't allocate entries");
+		err = ENOMEM;
+		goto end_label;
+	}
+
+	keypatt = binit();
+	if(keypatt == NULL) {
+		blogf("Couldn't allocate keypatt");
+		err = ENOMEM;
+		goto end_label;
+	}
+	bprintf(keypatt, "%s*", REDIS_KEYPREF);
+
+	ret = hiredis_keys(bget(keypatt), keys);
+	if(ret != 0) {
+		blogf("Could not get keys");
+		err = ret;
+		goto end_label;
+	}
+
+	for(key = (bstr_t *)barr_begin(keys);
+	    key < (bstr_t *)barr_end(keys); ++key) {
+		printf("%s\n", bget(key));
+	}
+
+end_label:
+
+	buninit(&keypatt);
+
+	for(key = (bstr_t *)barr_begin(keys);
+	    key < (bstr_t *)barr_end(keys); ++key) {
+		buninit_(key);
+	}
+	barr_uninit(&keys);
+	
+
+	if(err != 0) {
+
+		if(entries) {
+			while(entries->bl_cnt > 0) {
+				entry = (entry_t *) blist_rpop(entries);
+				entry_uninit(&entry);
+			}
+			blist_uninit(&entries);
+		}
+
+		return NULL;
+	} else
+		return entries;
+
 }
 

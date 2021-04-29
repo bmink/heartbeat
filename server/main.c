@@ -41,6 +41,7 @@ main(int argc, char **argv)
 
 	printf("<head><title>%s</title></head>\n", execn);
 	printf("<body>\n");
+	printf("<pre>\n");
 
 	ret = hiredis_init();
 	if(ret != 0) {
@@ -64,9 +65,11 @@ main(int argc, char **argv)
 	} else 
 	if(!xstrcmp(val, "POST")) {
 		ret = do_update();
-		if(ret != 0) {
+		if(ret == 0) {
+			printf("Update successful.\n");
+		} else {
 			blogf("Could not update: %s", strerror(ret));
-		}
+		} 
 	} else {
 		blogf("Unsupported HTTP method: %s", val);
 		err = -1;
@@ -75,9 +78,7 @@ main(int argc, char **argv)
 
 end_label:
 
-	if(err == 0) {
-		printf("Update successful.\n");
-	} else {
+	if(err != 0) {
 		printf("Error (check logs)\n");
 	}
 
@@ -85,7 +86,7 @@ end_label:
 
 	(void) blog_uninit();
 
-	printf("</body>\n</html>\n");
+	printf("</pre>\n</body>\n</html>\n");
 
 	return err;
 }
