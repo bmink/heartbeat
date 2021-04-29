@@ -22,7 +22,8 @@ main(int argc, char **argv)
 
 	err = 0;
 
-	printf("Content-Type: text/plain;charset=UTF-8\n\n");
+	printf("Content-Type: text/html;charset=UTF-8\n\n");
+	printf("<html>\n");
 
         execn = basename(argv[0]);
         if(xstrempty(execn)) {
@@ -37,6 +38,9 @@ main(int argc, char **argv)
 		err = -1;
                 goto end_label;
 	}
+
+	printf("<head><title>%s</title></head>\n", execn);
+	printf("<body>\n");
 
 	ret = hiredis_init();
 	if(ret != 0) {
@@ -80,6 +84,8 @@ end_label:
 	hiredis_uninit();
 
 	(void) blog_uninit();
+
+	printf("</body>\n</html>\n");
 
 	return err;
 }
