@@ -171,6 +171,31 @@ end_label:
 int
 do_list(void)
 {
-	return 0;
+	blist_t		*entries;
+	int		err;
+	entry_t		*entry;
+
+	err = 0;
+	entries = NULL;
+
+	entries = entry_getall_fromredis();
+	if(entries == NULL) {
+		blogf("Could not get entries from redis");
+		err = ENOEXEC;
+		goto end_label;
+	}
+
+
+end_label:
+
+	if(entries) {
+		while(entries->bl_cnt > 0) {
+			entry = (entry_t *) blist_rpop(entries);
+			entry_uninit(&entry);
+		}
+		blist_uninit(&entries);
+	}
+	
+	return err;
 }
 

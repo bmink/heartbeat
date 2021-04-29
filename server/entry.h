@@ -3,6 +3,7 @@
 
 #include <time.h>
 #include "bstr.h"
+#include "blist.h"
 
 typedef struct entry {
 	bstr_t	*en_hostn;
@@ -18,7 +19,9 @@ typedef struct entry {
 
 entry_t *entry_init_frompostdata(const char *, const char *);
 entry_t *entry_init_fromredis(const char *);
+blist_t	*entry_getall_fromredis(void);
 int entry_savetoredis(entry_t *);
 void entry_uninit(entry_t **);
+
 
 #endif

@@ -2,6 +2,7 @@
 #include <errno.h>
 #include "bstr.h"
 #include "blog.h"
+#include "blist.h"
 #include "cJSON.h"
 #include "cJSON_helper.h"
 #include "hiredis_helper.h"
@@ -378,4 +379,10 @@ end_label:
 	return err;
 }
 
+
+blist_t *
+entry_getall_fromredis(void)
+{
+	return NULL;
+}
 
